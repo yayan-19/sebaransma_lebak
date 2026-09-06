@@ -20,10 +20,9 @@
             padding: 0;
             margin: 0;
             overflow: hidden;
-            touch-action: manipulation; /* Optimasi responsif sentuhan HP */
+            touch-action: manipulation;
         }
 
-        /* Container Peta diturunkan sejajar dengan tinggi Running Text (40px) */
         #map {
             width: 100%;
             height: calc(100% - 40px);
@@ -32,13 +31,11 @@
             touch-action: pan-x pan-y;
         }
 
-        /* Optimasi rendering tile Leaflet */
         .leaflet-tile-container img {
             will-change: transform;
             image-rendering: -webkit-optimize-contrast;
         }
 
-        /* Speed up response for markers on mobile */
         .leaflet-marker-icon {
             touch-action: manipulation;
         }
@@ -73,7 +70,39 @@
             100% { transform: translate(-100%, 0); }
         }
 
-        /* Menyembunyikan Tulisan qgis2web, Leaflet, & QGIS Kanan Bawah */
+        /* Loading Screen Indicator */
+        #loader {
+            position: fixed;
+            top: 40px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 40px);
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid red;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .leaflet-control-attribution {
             display: none !important;
         }
@@ -84,6 +113,13 @@
         <div class="marquee-container">
             <div class="marquee-text">Peta sebaran Sekolah SMA di Kabupaten Lebak</div>
         </div>
+        
+        <!-- Loading Screen -->
+        <div id="loader">
+            <div class="spinner"></div>
+            <div>Memuat Peta & Data...</div>
+        </div>
+
         <div id="map"></div>        
 
         <script src="js/qgis2web_expressions.js"></script>
@@ -98,23 +134,23 @@
         <script src="js/labels.js"></script>
         <script src="js/leaflet.photon.js"></script>
         <script src="js/leaflet-measure.js"></script>
-        <script src="data/BatasWilayahKabLebak_0.js"></script>
-        <script src="data/JalanKabupaten_1.js"></script>
-        <script src="data/JalanNasionalnontol_2.js"></script>
-        <script src="data/JalanKeretaApi_3.js"></script>
-        <script src="data/StasiunKereta_4.js"></script>
-        <script src="data/TerminalBis_5.js"></script>
-        <script src="data/Waduk_6.js"></script>
-        <script src="data/SebaranSMAdiKabLebak_7.js"></script>
+
+        <!-- Script Data GeoJSON Di-defer agar Peta & UI muncul dulu -->
+        <script defer src="data/BatasWilayahKabLebak_0.js"></script>
+        <script defer src="data/JalanKabupaten_1.js"></script>
+        <script defer src="data/JalanNasionalnontol_2.js"></script>
+        <script defer src="data/JalanKeretaApi_3.js"></script>
+        <script defer src="data/StasiunKereta_4.js"></script>
+        <script defer src="data/TerminalBis_5.js"></script>
+        <script defer src="data/Waduk_6.js"></script>
+        <script defer src="data/SebaranSMAdiKabLebak_7.js"></script>
        
         <script>
-        // Area Bounding Box Wilayah Lebak
         var lebakBounds = L.latLngBounds(
             L.latLng(-7.1500, 105.7500), 
             L.latLng(-6.2000, 106.5500)
         );
 
-        // Inisialisasi Peta (Ditambahkan optimasi sentuhan HP)
         var map = L.map('map', {
             zoomControl: false,
             maxZoom: 19,
@@ -122,11 +158,9 @@
             maxBounds: lebakBounds,
             maxBoundsViscosity: 0.1,
             preferCanvas: true,
-            tap: true,
-            bounceAtZoomLimits: false
+            tap: true
         }).fitBounds([[-7.016710049423974, 105.1546657624719], [-6.229480013878517, 107.30653303398293]]);
 
-        // Layer Google Satellite
         var layer_GoogleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
             attribution: 'Google',
             maxZoom: 19,
@@ -134,7 +168,6 @@
             keepBuffer: 2
         });
 
-        // Layer OpenStreetMap
         var layer_OpenStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19,
@@ -142,11 +175,9 @@
             keepBuffer: 2
         });
 
-        // Menampilkan Google Satellite secara default
         map.addLayer(layer_GoogleSatellite);
 
         var hash = new L.Hash(map);
-        map.attributionControl.setPrefix('<a href="https://github.com/qgis2web/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
         var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
 
         var zoomControl = L.control.zoom({ position: 'topleft' }).addTo(map);
@@ -164,199 +195,129 @@
         var bounds_group = new L.featureGroup([]);
         function setBounds() {}
 
-        // --- LAYER GEOJSON ---
-        
-        // 0. Batas Wilayah
-        function style_BatasWilayahKabLebak_0_0() {
-            return {
+        // Inisialisasi Layer GeoJSON setelah file selesai diunduh
+        window.addEventListener('load', function() {
+            // 0. Batas Wilayah
+            var layer_BatasWilayahKabLebak_0 = new L.geoJson(json_BatasWilayahKabLebak_0, {
+                interactive: false,
                 pane: 'pane_BatasWilayahKabLebak_0',
-                opacity: 1,
-                color: 'rgba(238,239,19,1.0)',
-                dashArray: '5.0,1.0,2.0,1.0,2.0,1.0',
-                lineCap: 'butt',
-                lineJoin: 'miter',
-                weight: 1.0, 
-                fill: true,
-                fillOpacity: 0,
-                fillColor: 'rgba(255,255,255,0.0)',
-                interactive: false,
-            }
-        }
-        map.createPane('pane_BatasWilayahKabLebak_0');
-        map.getPane('pane_BatasWilayahKabLebak_0').style.zIndex = 400;
-        var layer_BatasWilayahKabLebak_0 = new L.geoJson(json_BatasWilayahKabLebak_0, {
-            interactive: false,
-            pane: 'pane_BatasWilayahKabLebak_0',
-            style: style_BatasWilayahKabLebak_0_0,
-        });
-        bounds_group.addLayer(layer_BatasWilayahKabLebak_0);
-        map.addLayer(layer_BatasWilayahKabLebak_0);
+                style: function() {
+                    return { opacity: 1, color: 'rgba(238,239,19,1.0)', dashArray: '5.0,1.0,2.0,1.0', weight: 1.0, fillOpacity: 0 };
+                }
+            });
 
-        // 1. Jalan Kabupaten
-        function style_JalanKabupaten_1_0() {
-            return {
+            // 1. Jalan Kabupaten
+            var layer_JalanKabupaten_1 = new L.geoJson(json_JalanKabupaten_1, {
+                interactive: false,
                 pane: 'pane_JalanKabupaten_1',
-                opacity: 1,
-                color: 'rgba(255,19,38,1.0)',
-                weight: 1.0,
-                fillOpacity: 0,
-                interactive: false,
-            }
-        }
-        map.createPane('pane_JalanKabupaten_1');
-        map.getPane('pane_JalanKabupaten_1').style.zIndex = 401;
-        var layer_JalanKabupaten_1 = new L.geoJson(json_JalanKabupaten_1, {
-            interactive: false,
-            pane: 'pane_JalanKabupaten_1',
-            style: style_JalanKabupaten_1_0,
-        });
-        bounds_group.addLayer(layer_JalanKabupaten_1);
-        map.addLayer(layer_JalanKabupaten_1);
+                style: function() { return { opacity: 1, color: 'rgba(255,19,38,1.0)', weight: 1.0, fillOpacity: 0 }; }
+            });
 
-        // 2. Jalan Nasional
-        function style_JalanNasionalnontol_2_0() {
-            return {
+            // 2. Jalan Nasional
+            var layer_JalanNasionalnontol_2 = new L.geoJson(json_JalanNasionalnontol_2, {
+                interactive: false,
                 pane: 'pane_JalanNasionalnontol_2',
-                opacity: 1,
-                color: 'rgba(255,19,38,1.0)',
-                weight: 2.0,
-                fillOpacity: 0,
-                interactive: false,
-            }
-        }
-        map.createPane('pane_JalanNasionalnontol_2');
-        map.getPane('pane_JalanNasionalnontol_2').style.zIndex = 402;
-        var layer_JalanNasionalnontol_2 = new L.geoJson(json_JalanNasionalnontol_2, {
-            interactive: false,
-            pane: 'pane_JalanNasionalnontol_2',
-            style: style_JalanNasionalnontol_2_0,
-        });
-        bounds_group.addLayer(layer_JalanNasionalnontol_2);
-        map.addLayer(layer_JalanNasionalnontol_2);
+                style: function() { return { opacity: 1, color: 'rgba(255,19,38,1.0)', weight: 2.0, fillOpacity: 0 }; }
+            });
 
-        // 3. Jalan Kereta Api
-        function style_JalanKeretaApi_3_0() {
-            return {
+            // 3. Jalan Kereta Api
+            var layer_JalanKeretaApi_3 = new L.geoJson(json_JalanKeretaApi_3, {
+                interactive: false,
                 pane: 'pane_JalanKeretaApi_3',
-                opacity: 1,
-                color: 'rgba(31,120,180,1.0)',
-                weight: 1.0,
-                fillOpacity: 0,
-                interactive: false,
-            }
-        }
-        map.createPane('pane_JalanKeretaApi_3');
-        map.getPane('pane_JalanKeretaApi_3').style.zIndex = 403;
-        var layer_JalanKeretaApi_3 = new L.geoJson(json_JalanKeretaApi_3, {
-            interactive: false,
-            pane: 'pane_JalanKeretaApi_3',
-            style: style_JalanKeretaApi_3_0,
+                style: function() { return { opacity: 1, color: 'rgba(31,120,180,1.0)', weight: 1.0, fillOpacity: 0 }; }
+            });
+
+            // 4. Stasiun Kereta
+            var layer_StasiunKereta_4 = new L.geoJson(json_StasiunKereta_4, {
+                interactive: true,
+                onEachFeature: function(f, l) {
+                    var val = f.properties['Stasiun KA'] ? autolinker.link(String(f.properties['Stasiun KA'])) : '';
+                    l.bindPopup('<b>Stasiun Kereta:</b><br>' + val);
+                },
+                pointToLayer: function (f, latlng) {
+                    return L.marker(latlng, { icon: L.icon({ iconUrl: 'markers/StasiunKereta_4.svg', iconSize: [15.2, 15.2] }) });
+                }
+            });
+
+            // 5. Terminal Bis
+            var layer_TerminalBis_5 = new L.geoJson(json_TerminalBis_5, {
+                interactive: true,
+                onEachFeature: function(f, l) {
+                    var val = f.properties['Terminal B'] ? autolinker.link(String(f.properties['Terminal B'])) : '';
+                    l.bindPopup('<b>Terminal Bis:</b><br>' + val);
+                },
+                pointToLayer: function (f, latlng) {
+                    return L.marker(latlng, { icon: L.icon({ iconUrl: 'markers/TerminalBis_5.svg', iconSize: [15.2, 15.2] }) });
+                }
+            });
+
+            // 6. Waduk
+            var layer_Waduk_6 = new L.geoJson(json_Waduk_6, {
+                interactive: true,
+                onEachFeature: function(f, l) {
+                    var val = f.properties['Waduk'] ? autolinker.link(String(f.properties['Waduk'])) : '';
+                    l.bindPopup('<b>Waduk:</b><br>' + val);
+                },
+                pointToLayer: function (f, latlng) {
+                    return L.marker(latlng, { icon: L.icon({ iconUrl: 'markers/Waduk_6.svg', iconSize: [15.2, 15.2] }) });
+                }
+            });
+
+            // 7. Sebaran SMA
+            var layer_SebaranSMAdiKabLebak_7 = new L.geoJson(json_SebaranSMAdiKabLebak_7, {
+                interactive: true,
+                onEachFeature: function(f, l) {
+                    var nama = f.properties['Nama_Sekol'] ? autolinker.link(String(f.properties['Nama_Sekol'])) : 'Tidak Ada Nama';
+                    l.bindPopup('<div style="font-weight:bold; font-size:14px;">' + nama + '</div>');
+                },
+                pointToLayer: function (f, latlng) {
+                    return L.marker(latlng, { icon: L.icon({ iconUrl: 'markers/SebaranSMAdiKabLebak_7.svg', iconSize: [14, 14] }) });
+                }
+            });
+
+            // Setup Panes
+            map.createPane('pane_BatasWilayahKabLebak_0').style.zIndex = 400;
+            map.createPane('pane_JalanKabupaten_1').style.zIndex = 401;
+            map.createPane('pane_JalanNasionalnontol_2').style.zIndex = 402;
+            map.createPane('pane_JalanKeretaApi_3').style.zIndex = 403;
+            map.createPane('pane_StasiunKereta_4').style.zIndex = 404;
+            map.createPane('pane_TerminalBis_5').style.zIndex = 405;
+            map.createPane('pane_Waduk_6').style.zIndex = 406;
+            map.createPane('pane_SebaranSMAdiKabLebak_7').style.zIndex = 407;
+
+            // Tambahkan semua layer ke peta
+            map.addLayer(layer_BatasWilayahKabLebak_0);
+            map.addLayer(layer_JalanKabupaten_1);
+            map.addLayer(layer_JalanNasionalnontol_2);
+            map.addLayer(layer_JalanKeretaApi_3);
+            map.addLayer(layer_StasiunKereta_4);
+            map.addLayer(layer_TerminalBis_5);
+            map.addLayer(layer_Waduk_6);
+            map.addLayer(layer_SebaranSMAdiKabLebak_7);
+
+            // Layer Tree Menu
+            var overlaysTree = [
+                {label: '<img src="legend/SebaranSMAdiKabLebak_7.png" /> Sebaran SMA di Kab Lebak', layer: layer_SebaranSMAdiKabLebak_7},
+                {label: '<img src="legend/Waduk_6.png" /> Waduk', layer: layer_Waduk_6},
+                {label: '<img src="legend/TerminalBis_5.png" /> Terminal Bis ', layer: layer_TerminalBis_5},
+                {label: '<img src="legend/StasiunKereta_4.png" /> Stasiun Kereta', layer: layer_StasiunKereta_4},
+                {label: '<img src="legend/JalanKeretaApi_3.png" /> Jalan Kereta Api ', layer: layer_JalanKeretaApi_3},
+                {label: '<img src="legend/JalanNasionalnontol_2.png" /> Jalan Nasional non tol', layer: layer_JalanNasionalnontol_2},
+                {label: '<img src="legend/JalanKabupaten_1.png" /> Jalan Kabupaten ', layer: layer_JalanKabupaten_1},
+                {label: '<img src="legend/BatasWilayahKabLebak_0.png" /> Batas Wilayah Kab Lebak', layer: layer_BatasWilayahKabLebak_0},
+                {label: 'Google Satellite', layer: layer_GoogleSatellite},
+                {label: 'OpenStreetMap', layer: layer_OpenStreetMap}
+            ];
+
+            var lay = L.control.layers.tree(null, overlaysTree, { collapsed: true });
+            lay.addTo(map);
+
+            resetLabels([layer_BatasWilayahKabLebak_0, layer_SebaranSMAdiKabLebak_7]);
+            map.on("zoomend", function(){ resetLabels([layer_BatasWilayahKabLebak_0, layer_SebaranSMAdiKabLebak_7]); });
+
+            // Sembunyikan Indikator Loading
+            document.getElementById('loader').style.display = 'none';
         });
-        bounds_group.addLayer(layer_JalanKeretaApi_3);
-        map.addLayer(layer_JalanKeretaApi_3);
-
-        // 4. Stasiun Kereta
-        function pop_StasiunKereta_4(feature, layer) {
-            var val = feature.properties['Stasiun KA'] ? autolinker.link(String(feature.properties['Stasiun KA'])) : '';
-            layer.bindPopup('<b>Stasiun Kereta:</b><br>' + val);
-        }
-        map.createPane('pane_StasiunKereta_4');
-        map.getPane('pane_StasiunKereta_4').style.zIndex = 404;
-        var layer_StasiunKereta_4 = new L.geoJson(json_StasiunKereta_4, {
-            interactive: true,
-            pane: 'pane_StasiunKereta_4',
-            onEachFeature: pop_StasiunKereta_4,
-            pointToLayer: function (feature, latlng) {
-                return L.marker(latlng, {
-                    icon: L.icon({ iconUrl: 'markers/StasiunKereta_4.svg', iconSize: [15.2, 15.2] })
-                });
-            },
-        });
-        bounds_group.addLayer(layer_StasiunKereta_4);
-        map.addLayer(layer_StasiunKereta_4);
-
-        // 5. Terminal Bis
-        function pop_TerminalBis_5(feature, layer) {
-            var val = feature.properties['Terminal B'] ? autolinker.link(String(feature.properties['Terminal B'])) : '';
-            layer.bindPopup('<b>Terminal Bis:</b><br>' + val);
-        }
-        map.createPane('pane_TerminalBis_5');
-        map.getPane('pane_TerminalBis_5').style.zIndex = 405;
-        var layer_TerminalBis_5 = new L.geoJson(json_TerminalBis_5, {
-            interactive: true,
-            pane: 'pane_TerminalBis_5',
-            onEachFeature: pop_TerminalBis_5,
-            pointToLayer: function (feature, latlng) {
-                return L.marker(latlng, {
-                    icon: L.icon({ iconUrl: 'markers/TerminalBis_5.svg', iconSize: [15.2, 15.2] })
-                });
-            },
-        });
-        bounds_group.addLayer(layer_TerminalBis_5);
-        map.addLayer(layer_TerminalBis_5);
-
-        // 6. Waduk
-        function pop_Waduk_6(feature, layer) {
-            var val = feature.properties['Waduk'] ? autolinker.link(String(feature.properties['Waduk'])) : '';
-            layer.bindPopup('<b>Waduk:</b><br>' + val);
-        }
-        map.createPane('pane_Waduk_6');
-        map.getPane('pane_Waduk_6').style.zIndex = 406;
-        var layer_Waduk_6 = new L.geoJson(json_Waduk_6, {
-            interactive: true,
-            pane: 'pane_Waduk_6',
-            onEachFeature: pop_Waduk_6,
-            pointToLayer: function (feature, latlng) {
-                return L.marker(latlng, {
-                    icon: L.icon({ iconUrl: 'markers/Waduk_6.svg', iconSize: [15.2, 15.2] })
-                });
-            },
-        });
-        bounds_group.addLayer(layer_Waduk_6);
-        map.addLayer(layer_Waduk_6);
-
-        // 7. Sebaran SMA Kab Lebak (Optimasi Respon Cepat Saat Di-Tap/Klik)
-        function pop_SebaranSMAdiKabLebak_7(feature, layer) {
-            var namaSekolah = feature.properties['Nama_Sekol'] ? autolinker.link(String(feature.properties['Nama_Sekol'])) : 'Tidak Ada Nama';
-            layer.bindPopup('<div style="font-weight:bold; font-size:14px; padding:3px;">' + namaSekolah + '</div>');
-        }
-        map.createPane('pane_SebaranSMAdiKabLebak_7');
-        map.getPane('pane_SebaranSMAdiKabLebak_7').style.zIndex = 407;
-        var layer_SebaranSMAdiKabLebak_7 = new L.geoJson(json_SebaranSMAdiKabLebak_7, {
-            interactive: true,
-            pane: 'pane_SebaranSMAdiKabLebak_7',
-            onEachFeature: pop_SebaranSMAdiKabLebak_7,
-            pointToLayer: function (feature, latlng) {
-                return L.marker(latlng, {
-                    icon: L.icon({ iconUrl: 'markers/SebaranSMAdiKabLebak_7.svg', iconSize: [14, 14] })
-                });
-            },
-        });
-        bounds_group.addLayer(layer_SebaranSMAdiKabLebak_7);
-        map.addLayer(layer_SebaranSMAdiKabLebak_7);
-
-        // Susunan Layer Menu Pilihan
-        var overlaysTree = [
-            {label: '<img src="legend/SebaranSMAdiKabLebak_7.png" /> Sebaran SMA di Kab Lebak', layer: layer_SebaranSMAdiKabLebak_7},
-            {label: '<img src="legend/Waduk_6.png" /> Waduk', layer: layer_Waduk_6},
-            {label: '<img src="legend/TerminalBis_5.png" /> Terminal Bis ', layer: layer_TerminalBis_5},
-            {label: '<img src="legend/StasiunKereta_4.png" /> Stasiun Kereta', layer: layer_StasiunKereta_4},
-            {label: '<img src="legend/JalanKeretaApi_3.png" /> Jalan Kereta Api ', layer: layer_JalanKeretaApi_3},
-            {label: '<img src="legend/JalanNasionalnontol_2.png" /> Jalan Nasional non tol', layer: layer_JalanNasionalnontol_2},
-            {label: '<img src="legend/JalanKabupaten_1.png" /> Jalan Kabupaten ', layer: layer_JalanKabupaten_1},
-            {label: '<img src="legend/BatasWilayahKabLebak_0.png" /> Batas Wilayah Kab Lebak', layer: layer_BatasWilayahKabLebak_0},
-            {label: 'Google Satellite', layer: layer_GoogleSatellite},
-            {label: 'OpenStreetMap', layer: layer_OpenStreetMap}
-        ];
-
-        var lay = L.control.layers.tree(null, overlaysTree, { collapsed: true });
-        lay.addTo(map);
-
-        setBounds();
-        resetLabels([layer_BatasWilayahKabLebak_0, layer_SebaranSMAdiKabLebak_7]);
-        map.on("zoomend", function(){ resetLabels([layer_BatasWilayahKabLebak_0, layer_SebaranSMAdiKabLebak_7]); });
-        map.on("layeradd", function(){ resetLabels([layer_BatasWilayahKabLebak_0, layer_SebaranSMAdiKabLebak_7]); });
-        map.on("layerremove", function(){ resetLabels([layer_BatasWilayahKabLebak_0, layer_SebaranSMAdiKabLebak_7]); });
         </script>        
     </body>
 </html>
