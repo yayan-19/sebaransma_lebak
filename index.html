@@ -3,7 +3,8 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <!-- Pengaturan viewport dioptimalkan untuk responsivitas gesture HP -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">        
         <link rel="stylesheet" href="css/leaflet.css">
@@ -20,7 +21,7 @@
             padding: 0;
             margin: 0;
             overflow: hidden;
-            touch-action: manipulation;
+            touch-action: none; /* Mencegah bentrokan gesture browser HP dan peta */
         }
 
         #map {
@@ -38,6 +39,26 @@
 
         .leaflet-marker-icon {
             touch-action: manipulation;
+        }
+
+        /* Desain Pop-up Kecamatan */
+        .popup-kecamatan {
+            font-family: Arial, sans-serif;
+            padding: 4px 8px;
+            text-align: center;
+        }
+        .popup-kecamatan .label {
+            font-size: 10px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .popup-kecamatan .value {
+            font-size: 15px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 2px;
         }
 
         /* Running Text */
@@ -135,7 +156,7 @@
         <script src="js/leaflet.photon.js"></script>
         <script src="js/leaflet-measure.js"></script>
 
-        <!-- Script Data GeoJSON Di-defer agar Peta & UI muncul dulu -->
+        <!-- Script Data GeoJSON -->
         <script defer src="data/BatasWilayahKabLebak_0.js"></script>
         <script defer src="data/JalanKabupaten_1.js"></script>
         <script defer src="data/JalanNasionalnontol_2.js"></script>
@@ -151,19 +172,21 @@
             L.latLng(-6.2000, 106.5500)
         );
 
-        // Optimasi Performa Peta & Menghilangkan Animasi Patah-patah saat Zoom
+        // Optimasi Zoom & Pinch Gesture HP
         var map = L.map('map', {
             zoomControl: false,
             maxZoom: 19,
-            minZoom: 9,
+            minZoom: 8,
             maxBounds: lebakBounds,
             maxBoundsViscosity: 0.1,
-            preferCanvas: true,            // Menggunakan GPU Canvas renderer
-            zoomAnimation: false,          // Menonaktifkan animasi zoom berat
-            fadeAnimation: false,          // Menonaktifkan transisi tile
-            markerZoomAnimation: false,    // Menghilangkan patah-patah transisi marker
+            preferCanvas: true,            // GPU Canvas rendering
+            zoomAnimation: true,           // Mengaktifkan animasi zoom smooth
+            zoomSnap: 0.5,                 // Zoom lebih responsif dan bertahap di layar sentuh
+            zoomDelta: 0.5,
+            wheelDebounceTime: 40,
+            fadeAnimation: false,
             bounceAtZoomLimits: false,
-            tap: true
+            tapHold: true
         }).fitBounds([[-7.016710049423974, 105.1546657624719], [-6.229480013878517, 107.30653303398293]]);
 
         var layer_GoogleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -171,7 +194,7 @@
             maxZoom: 19,
             updateWhenIdle: true,
             updateWhenZooming: false,
-            keepBuffer: 2
+            keepBuffer: 3
         });
 
         var layer_OpenStreetMap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -179,7 +202,7 @@
             maxZoom: 19,
             updateWhenIdle: true,
             updateWhenZooming: false,
-            keepBuffer: 2
+            keepBuffer: 3
         });
 
         map.addLayer(layer_GoogleSatellite);
@@ -202,18 +225,36 @@
         var bounds_group = new L.featureGroup([]);
         function setBounds() {}
 
-        // Inisialisasi Layer GeoJSON setelah file selesai diunduh
+        // Inisialisasi Layer GeoJSON
         window.addEventListener('load', function() {
-            // 0. Batas Wilayah
+            // 0. Batas Wilayah (Sudah Interaktif + Pop-up Nama Kecamatan)
             var layer_BatasWilayahKabLebak_0 = new L.geoJson(json_BatasWilayahKabLebak_0, {
-                interactive: false,
+                interactive: true,
                 pane: 'pane_BatasWilayahKabLebak_0',
                 style: function() {
-                    return { opacity: 1, color: 'rgba(238,239,19,1.0)', dashArray: '5.0,1.0,2.0,1.0', weight: 1.0, fillOpacity: 0 };
+                    return { 
+                        opacity: 1, 
+                        color: 'rgba(238,239,19,1.0)', 
+                        dashArray: '5.0,1.0,2.0,1.0', 
+                        weight: 1.5, 
+                        fillColor: 'rgba(238,239,19,1.0)',
+                        fillOpacity: 0.15 
+                    };
+                },
+                onEachFeature: function(feature, layer) {
+                    var p = feature.properties || {};
+                    var namaKecamatan = p['WADMKC'] || p['wadmkc'] || p['KECAMATAN'] || 'Tidak Ada Data';
+                    
+                    var popupContent = '<div class="popup-kecamatan">' +
+                                       '<div class="label">Kecamatan</div>' +
+                                       '<div class="value">' + namaKecamatan + '</div>' +
+                                       '</div>';
+                    
+                    layer.bindPopup(popupContent, { maxHeight: 300 });
                 }
             });
 
-            // 1. Jalan Kabupaten
+            // 1. Jalan Kabupaten (Non-interaktif agar klik fokus ke area wilayah/sekolah)
             var layer_JalanKabupaten_1 = new L.geoJson(json_JalanKabupaten_1, {
                 interactive: false,
                 pane: 'pane_JalanKabupaten_1',
@@ -291,6 +332,11 @@
             map.createPane('pane_TerminalBis_5').style.zIndex = 405;
             map.createPane('pane_Waduk_6').style.zIndex = 406;
             map.createPane('pane_SebaranSMAdiKabLebak_7').style.zIndex = 407;
+
+            // Memastikan pane jalan tidak memblokir event klik ke layer bawahnya
+            map.getPane('pane_JalanKabupaten_1').style.pointerEvents = 'none';
+            map.getPane('pane_JalanNasionalnontol_2').style.pointerEvents = 'none';
+            map.getPane('pane_JalanKeretaApi_3').style.pointerEvents = 'none';
 
             // Tambahkan semua layer ke peta
             map.addLayer(layer_BatasWilayahKabLebak_0);
