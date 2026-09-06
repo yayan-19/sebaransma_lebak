@@ -151,13 +151,18 @@
             L.latLng(-6.2000, 106.5500)
         );
 
+        // Optimasi Performa Peta & Menghilangkan Animasi Patah-patah saat Zoom
         var map = L.map('map', {
             zoomControl: false,
             maxZoom: 19,
             minZoom: 9,
             maxBounds: lebakBounds,
             maxBoundsViscosity: 0.1,
-            preferCanvas: true,
+            preferCanvas: true,            // Menggunakan GPU Canvas renderer
+            zoomAnimation: false,          // Menonaktifkan animasi zoom berat
+            fadeAnimation: false,          // Menonaktifkan transisi tile
+            markerZoomAnimation: false,    // Menghilangkan patah-patah transisi marker
+            bounceAtZoomLimits: false,
             tap: true
         }).fitBounds([[-7.016710049423974, 105.1546657624719], [-6.229480013878517, 107.30653303398293]]);
 
@@ -165,6 +170,7 @@
             attribution: 'Google',
             maxZoom: 19,
             updateWhenIdle: true,
+            updateWhenZooming: false,
             keepBuffer: 2
         });
 
@@ -172,6 +178,7 @@
             attribution: '&copy; OpenStreetMap contributors',
             maxZoom: 19,
             updateWhenIdle: true,
+            updateWhenZooming: false,
             keepBuffer: 2
         });
 
