@@ -23,10 +23,10 @@
             overflow: hidden;
         }
 
-        /* Running Text / Teks Berjalan */
+        /* Running Text Header */
         .marquee-header {
-            background-color: #ff0000; /* Warna Merah */
-            color: #ffffff; /* Warna Putih */
+            background-color: #ff0000; /* Background Merah */
+            color: #ffffff; /* Tulisan Putih */
             font-family: Arial, sans-serif;
             font-size: 16px;
             font-weight: bold;
@@ -40,7 +40,7 @@
             display: block;
         }
 
-        /* Container Peta */
+        /* Map Container */
         #map {
             width: 100%;
             flex-grow: 1;
@@ -66,13 +66,21 @@
             padding: 2px !important;
         }
 
-        /* Hapus Permanen Tampilan Attribution (qgis2web, OpenLayers, QGIS) */
-        .ol-attribution, .ol-attribution.ol-uncollapsible {
+        /* HAPUS SEMUA ATRIBUSI QGIS / OPENLAYERS DENGAN SANGAT KETAT */
+        .ol-attribution, 
+        .ol-attribution *, 
+        a[href*="qgis2web"], 
+        a[href*="openlayers"], 
+        a[href*="qgis"] {
             display: none !important;
+            opacity: 0 !important;
             visibility: hidden !important;
+            pointer-events: none !important;
+            height: 0 !important;
+            width: 0 !important;
         }
 
-        /* Indikator Loading */
+        /* Loading Screen */
         #map-loading {
             position: absolute;
             top: 0;
@@ -107,7 +115,7 @@
         <title>Peta Sebaran SMA di Kabupaten Lebak</title>
     </head>
     <body>
-        <!-- Element Running Text -->
+        <!-- Running Text -->
         <div class="marquee-header">
             <marquee behavior="scroll" direction="left" scrollamount="6">
                 Peta Sebaran SMA di Kabupaten Lebak
@@ -116,7 +124,7 @@
 
         <!-- Element Peta -->
         <div id="map">
-            <!-- Tampilan Loading -->
+            <!-- Indikator Loading -->
             <div id="map-loading">
                 <div class="spinner"></div>
                 <div>Memuat Peta...</div>
@@ -141,7 +149,7 @@
         <script src="./resources/qgis2web.js"></script>
 
         <script>
-            // Kunci orientasi peta agar selalu menghadap ke Utara / Atas
+            // 1. Kunci orientasi peta agar selalu menghadap ke Utara
             if (typeof map !== 'undefined') {
                 var currentView = map.getView();
                 if (currentView) {
@@ -150,21 +158,44 @@
                         zoom: currentView.getZoom(),
                         projection: currentView.getProjection(),
                         rotation: 0,
-                        enableRotation: false // Mencegah pemutaran/rotasi peta
+                        enableRotation: false // Mencegah rotasi pada layar sentuh
                     }));
                 }
+
+                // 2. SOLUSI KLIK HP RESPONG SANGAT BAGUS: Tambahkan Hit Tolerance (Zona Toleransi Sentuhan)
+                // Ini akan mendeteksi klik pada radius 15px di sekitar simbol sekolah
+                map.on('singleclick', function (evt) {
+                    var featureFound = false;
+                    map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
+                        featureFound = true;
+                    }, {
+                        hitTolerance: 15 // Menambah luas area klik khusus untuk HP
+                    });
+                });
             }
 
-            // Menghapus elemen atribusi qgis2web/OpenLayers/QGIS dari DOM secara permanen
-            window.addEventListener('DOMContentLoaded', function() {
-                var attrElements = document.querySelectorAll('.ol-attribution');
-                attrElements.forEach(function(el) {
-                    el.remove();
+            // 3. HAPUS PERMANEN TEXT QGIS2WEB, OPENLAYERS, QGIS MENGGUNAKAN OBSERVER
+            function cleanAttributions() {
+                var attributions = document.querySelectorAll('.ol-attribution, .ol-attribution-uncollapsible');
+                attributions.forEach(function(el) {
+                    el.innerHTML = ''; // Kosongkan HTML dalamnya
+                    el.remove(); // Hapus elemen dari DOM
                 });
+            }
+
+            // Jalankan pembersihan awal
+            cleanAttributions();
+
+            // Pantau DOM secara otomatis jika qgis2web mencoba menambahkannya kembali
+            var observer = new MutationObserver(function(mutations) {
+                cleanAttributions();
             });
 
-            // Menghilangkan Tampilan Loading setelah halaman & peta selesai dimuat
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            // 4. Hilangkan Layar Loading setelah peta siap
             window.addEventListener('load', function() {
+                cleanAttributions();
                 var loadingEl = document.getElementById('map-loading');
                 if (loadingEl) {
                     loadingEl.style.opacity = '0';
