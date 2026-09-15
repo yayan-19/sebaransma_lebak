@@ -66,18 +66,16 @@
             padding: 2px !important;
         }
 
-        /* HAPUS SEMUA ATRIBUSI QGIS / OPENLAYERS DENGAN SANGAT KETAT */
-        .ol-attribution, 
-        .ol-attribution *, 
-        a[href*="qgis2web"], 
-        a[href*="openlayers"], 
+        /* Sembunyikan Kontrol Atribusi via CSS */
+        .ol-attribution,
+        .ol-attribution *,
+        a[href*="qgis2web"],
+        a[href*="openlayers"],
         a[href*="qgis"] {
             display: none !important;
             opacity: 0 !important;
             visibility: hidden !important;
             pointer-events: none !important;
-            height: 0 !important;
-            width: 0 !important;
         }
 
         /* Loading Screen */
@@ -149,53 +147,39 @@
         <script src="./resources/qgis2web.js"></script>
 
         <script>
-            // 1. Kunci orientasi peta agar selalu menghadap ke Utara
-            if (typeof map !== 'undefined') {
-                var currentView = map.getView();
-                if (currentView) {
-                    map.setView(new ol.View({
-                        center: currentView.getCenter(),
-                        zoom: currentView.getZoom(),
-                        projection: currentView.getProjection(),
-                        rotation: 0,
-                        enableRotation: false // Mencegah rotasi pada layar sentuh
-                    }));
-                }
+            document.addEventListener("DOMContentLoaded", function() {
+                if (typeof map !== 'undefined') {
+                    // 1. Kunci Peta Agar Tetap Menghadap Utara
+                    var currentView = map.getView();
+                    if (currentView) {
+                        map.setView(new ol.View({
+                            center: currentView.getCenter(),
+                            zoom: currentView.getZoom(),
+                            projection: currentView.getProjection(),
+                            rotation: 0,
+                            enableRotation: false
+                        }));
+                    }
 
-                // 2. SOLUSI KLIK HP RESPONG SANGAT BAGUS: Tambahkan Hit Tolerance (Zona Toleransi Sentuhan)
-                // Ini akan mendeteksi klik pada radius 15px di sekitar simbol sekolah
-                map.on('singleclick', function (evt) {
-                    var featureFound = false;
-                    map.forEachFeatureAtPixel(evt.pixel, function (feature, layer) {
-                        featureFound = true;
-                    }, {
-                        hitTolerance: 15 // Menambah luas area klik khusus untuk HP
+                    // 2. Hapus Atribusi qgis2web/OpenLayers/QGIS langsung dari Objek Map
+                    map.getControls().forEach(function(control) {
+                        if (control instanceof ol.control.Attribution) {
+                            map.removeControl(control);
+                        }
                     });
-                });
-            }
 
-            // 3. HAPUS PERMANEN TEXT QGIS2WEB, OPENLAYERS, QGIS MENGGUNAKAN OBSERVER
-            function cleanAttributions() {
-                var attributions = document.querySelectorAll('.ol-attribution, .ol-attribution-uncollapsible');
-                attributions.forEach(function(el) {
-                    el.innerHTML = ''; // Kosongkan HTML dalamnya
-                    el.remove(); // Hapus elemen dari DOM
-                });
-            }
-
-            // Jalankan pembersihan awal
-            cleanAttributions();
-
-            // Pantau DOM secara otomatis jika qgis2web mencoba menambahkannya kembali
-            var observer = new MutationObserver(function(mutations) {
-                cleanAttributions();
+                    // 3. Modifikasi forEachFeatureAtPixel agar semua klik di HP memiliki toleransi sentuhan 20px
+                    var origForEachFeature = map.forEachFeatureAtPixel.bind(map);
+                    map.forEachFeatureAtPixel = function(pixel, callback, options) {
+                        options = options || {};
+                        options.hitTolerance = 20; // Memperbesar radius klik untuk layar HP
+                        return origForEachFeature(pixel, callback, options);
+                    };
+                }
             });
 
-            observer.observe(document.body, { childList: true, subtree: true });
-
-            // 4. Hilangkan Layar Loading setelah peta siap
+            // 4. Sembunyikan Loading Screen Setelah Peta Siap
             window.addEventListener('load', function() {
-                cleanAttributions();
                 var loadingEl = document.getElementById('map-loading');
                 if (loadingEl) {
                     loadingEl.style.opacity = '0';
