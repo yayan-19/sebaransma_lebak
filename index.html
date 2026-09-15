@@ -23,24 +23,24 @@
             overflow: hidden;
         }
 
-        /* Styles Running Text */
-        .marquee-container {
-            background-color: #ff0000; /* Warna merah */
-            color: #ffffff; /* Warna putih */
+        /* Running Text / Teks Berjalan */
+        .marquee-header {
+            background-color: #ff0000; /* Warna Merah */
+            color: #ffffff; /* Warna Putih */
             font-family: Arial, sans-serif;
             font-size: 16px;
             font-weight: bold;
             padding: 6px 0;
             z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
             flex-shrink: 0;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.2);
         }
 
-        .marquee-container marquee {
+        .marquee-header marquee {
             display: block;
         }
 
-        /* Styles Map Wrapper */
+        /* Container Peta */
         #map {
             width: 100%;
             flex-grow: 1;
@@ -64,38 +64,39 @@
         .ol-control {
             background-color: rgba(255,255,255,.4) !important;
             padding: 2px !important;
-        } 
-
-        /* Menyembunyikan Attribution (qgis2web, OpenLayers, QGIS) */
-        .ol-attribution, .ol-attribution.ol-uncollapsible {
-            display: none !important;
         }
 
-        /* Styles Loading Screen */
-        #loading {
+        /* Hapus Permanen Tampilan Attribution (qgis2web, OpenLayers, QGIS) */
+        .ol-attribution, .ol-attribution.ol-uncollapsible {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Indikator Loading */
+        #map-loading {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 255, 255, 0.9);
+            background-color: rgba(255, 255, 255, 0.95);
             z-index: 9999;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             font-family: Arial, sans-serif;
-            color: #333;
+            color: #333333;
         }
 
         .spinner {
-            border: 6px solid #f3f3f3;
-            border-top: 6px solid #ff0000;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #ff0000;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             animation: spin 1s linear infinite;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         @keyframes spin {
@@ -106,8 +107,8 @@
         <title>Peta Sebaran SMA di Kabupaten Lebak</title>
     </head>
     <body>
-        <!-- Running Text -->
-        <div class="marquee-container">
+        <!-- Element Running Text -->
+        <div class="marquee-header">
             <marquee behavior="scroll" direction="left" scrollamount="6">
                 Peta Sebaran SMA di Kabupaten Lebak
             </marquee>
@@ -115,8 +116,8 @@
 
         <!-- Element Peta -->
         <div id="map">
-            <!-- Loading Indicator -->
-            <div id="loading">
+            <!-- Tampilan Loading -->
+            <div id="map-loading">
                 <div class="spinner"></div>
                 <div>Memuat Peta...</div>
             </div>
@@ -133,45 +134,44 @@
         <script src="./resources/ol-layerswitcher.js"></script>
         <script src="resources/photon-geocoder-autocomplete.min.js"></script>
         <script src="resources/olms.js"></script>
-        <script src="layers/Batas_Wilayah_Kab_Lebak_1.js"></script><script src="layers/SebaranSMAdiKabupatenLebak_2.js"></script>
-        <script src="styles/Batas_Wilayah_Kab_Lebak_1_style.js"></script><script src="styles/SebaranSMAdiKabupatenLebak_2_style.js"></script>
+        <script src="layers/Batas_Wilayah_Kab_Lebak_2.js"></script><script src="layers/SebaranSMAdiKabupatenLebak_3.js"></script>
+        <script src="styles/Batas_Wilayah_Kab_Lebak_2_style.js"></script><script src="styles/SebaranSMAdiKabupatenLebak_3_style.js"></script>
         <script src="./layers/layers.js" type="text/javascript"></script> 
         <script src="./resources/Autolinker.min.js"></script>
         <script src="./resources/qgis2web.js"></script>
 
         <script>
-            // Kunci arah peta agar selalu menghadap ke Utara / Atas
+            // Kunci orientasi peta agar selalu menghadap ke Utara / Atas
             if (typeof map !== 'undefined') {
-                var view = map.getView();
-                if (view) {
-                    view.setRotation(0);
-                    // Mencegah rotasi via drag/touch
+                var currentView = map.getView();
+                if (currentView) {
                     map.setView(new ol.View({
-                        center: view.getCenter(),
-                        zoom: view.getZoom(),
-                        projection: view.getProjection(),
-                        enableRotation: false
+                        center: currentView.getCenter(),
+                        zoom: currentView.getZoom(),
+                        projection: currentView.getProjection(),
+                        rotation: 0,
+                        enableRotation: false // Mencegah pemutaran/rotasi peta
                     }));
                 }
             }
 
-            // Menghilangkan atribusi qgis2web/OpenLayers/QGIS secara permanen dari DOM
+            // Menghapus elemen atribusi qgis2web/OpenLayers/QGIS dari DOM secara permanen
             window.addEventListener('DOMContentLoaded', function() {
-                var attributions = document.querySelectorAll('.ol-attribution');
-                attributions.forEach(function(attr) {
-                    attr.remove();
+                var attrElements = document.querySelectorAll('.ol-attribution');
+                attrElements.forEach(function(el) {
+                    el.remove();
                 });
             });
 
-            // Menghilangkan Layar Loading ketika peta selesai dimuat
+            // Menghilangkan Tampilan Loading setelah halaman & peta selesai dimuat
             window.addEventListener('load', function() {
-                var loading = document.getElementById('loading');
-                if (loading) {
-                    loading.style.opacity = '0';
-                    loading.style.transition = 'opacity 0.5s ease';
+                var loadingEl = document.getElementById('map-loading');
+                if (loadingEl) {
+                    loadingEl.style.opacity = '0';
+                    loadingEl.style.transition = 'opacity 0.4s ease';
                     setTimeout(function() {
-                        loading.style.display = 'none';
-                    }, 500);
+                        loadingEl.style.display = 'none';
+                    }, 400);
                 }
             });
         </script>
