@@ -14,7 +14,39 @@
         <style>
         html, body {
             background-color: #ffffff;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
+
+        /* Styles Running Text */
+        .marquee-container {
+            background-color: #ff0000; /* Warna merah */
+            color: #ffffff; /* Warna putih */
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 6px 0;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+
+        .marquee-container marquee {
+            display: block;
+        }
+
+        /* Styles Map Wrapper */
+        #map {
+            width: 100%;
+            flex-grow: 1;
+            position: relative;
+        }
+
         .ol-control > * {
             background-color: #f8f8f8!important;
             color: #444444!important;
@@ -33,25 +65,68 @@
             background-color: rgba(255,255,255,.4) !important;
             padding: 2px !important;
         } 
-        </style>
 
-        <style>
-        html, body, #map {
+        /* Menyembunyikan Attribution (qgis2web, OpenLayers, QGIS) */
+        .ol-attribution, .ol-attribution.ol-uncollapsible {
+            display: none !important;
+        }
+
+        /* Styles Loading Screen */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            padding: 0;
-            margin: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #ff0000;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         </style>
-        <title></title>
+        <title>Peta Sebaran SMA di Kabupaten Lebak</title>
     </head>
     <body>
+        <!-- Running Text -->
+        <div class="marquee-container">
+            <marquee behavior="scroll" direction="left" scrollamount="6">
+                Peta Sebaran SMA di Kabupaten Lebak
+            </marquee>
+        </div>
+
+        <!-- Element Peta -->
         <div id="map">
+            <!-- Loading Indicator -->
+            <div id="loading">
+                <div class="spinner"></div>
+                <div>Memuat Peta...</div>
+            </div>
+
             <div id="popup" class="ol-popup">
                 <a href="#" id="popup-closer" class="ol-popup-closer"></a>
                 <div id="popup-content"></div>
             </div>
         </div>
+
         <script src="resources/qgis2web_expressions.js"></script>
         <script src="./resources/functions.js"></script>
         <script src="./resources/ol.js"></script>
@@ -62,6 +137,43 @@
         <script src="styles/Batas_Wilayah_Kab_Lebak_1_style.js"></script><script src="styles/SebaranSMAdiKabupatenLebak_2_style.js"></script>
         <script src="./layers/layers.js" type="text/javascript"></script> 
         <script src="./resources/Autolinker.min.js"></script>
-        <script src="./resources/qgis2web.js"></script>        
+        <script src="./resources/qgis2web.js"></script>
+
+        <script>
+            // Kunci arah peta agar selalu menghadap ke Utara / Atas
+            if (typeof map !== 'undefined') {
+                var view = map.getView();
+                if (view) {
+                    view.setRotation(0);
+                    // Mencegah rotasi via drag/touch
+                    map.setView(new ol.View({
+                        center: view.getCenter(),
+                        zoom: view.getZoom(),
+                        projection: view.getProjection(),
+                        enableRotation: false
+                    }));
+                }
+            }
+
+            // Menghilangkan atribusi qgis2web/OpenLayers/QGIS secara permanen dari DOM
+            window.addEventListener('DOMContentLoaded', function() {
+                var attributions = document.querySelectorAll('.ol-attribution');
+                attributions.forEach(function(attr) {
+                    attr.remove();
+                });
+            });
+
+            // Menghilangkan Layar Loading ketika peta selesai dimuat
+            window.addEventListener('load', function() {
+                var loading = document.getElementById('loading');
+                if (loading) {
+                    loading.style.opacity = '0';
+                    loading.style.transition = 'opacity 0.5s ease';
+                    setTimeout(function() {
+                        loading.style.display = 'none';
+                    }, 500);
+                }
+            });
+        </script>
     </body>
 </html>
