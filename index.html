@@ -172,7 +172,7 @@
                     var origForEachFeature = map.forEachFeatureAtPixel.bind(map);
                     map.forEachFeatureAtPixel = function(pixel, callback, options) {
                         options = options || {};
-                        options.hitTolerance = 30; // Memperbesar radius klik untuk layar HP
+                        options.hitTolerance = 20; // Memperbesar radius klik untuk layar HP
                         return origForEachFeature(pixel, callback, options);
                     };
                 }
