@@ -67,12 +67,12 @@
             width: 0 !important;
         }
 
-        /* OPTIMASI RESPONSIF HP: Ukuran Tombol Kontrol (Zoom & Home) */
+        /* OPTIMASI TOMBOL HP */
         .ol-control button {
-            width: 44px !important;  /* Ukuran ideal area sentuh jari HP */
+            width: 44px !important;
             height: 44px !important;
             font-size: 20px !important;
-            touch-action: none !important; /* Matikan semua gesture bawaan browser pada tombol */
+            touch-action: none !important;
             cursor: pointer;
         }
 
@@ -90,7 +90,6 @@
             padding: 2px !important;
         }
 
-        /* Posisi Tombol Home disesuaikan dengan tombol zoom 44px */
         .ol-home {
             top: 98px !important; 
             left: .5em;
@@ -178,7 +177,7 @@
             }
             setInterval(enforceOriginalText, 300);
 
-            // Menghapus elemen atribusi secara periodik
+            // Menghapus elemen atribusi
             function removeAttributionElements() {
                 var attributions = document.querySelectorAll('.ol-attribution, [class*="attribution"]');
                 attributions.forEach(function(el) {
@@ -187,7 +186,7 @@
             }
             setInterval(removeAttributionElements, 100);
 
-            // Menghilangkan layar loading
+            // Hilangkan layar loading
             window.addEventListener('load', function() {
                 removeAttributionElements();
                 enforceOriginalText();
@@ -211,7 +210,7 @@
 
                 var view = map.getView();
 
-                // Kunci rotasi ke Atas/Utara
+                // Kunci rotasi ke Utaras
                 view.setRotation(0);
                 map.getInteractions().forEach(function(interaction) {
                     if (interaction instanceof ol.interaction.DragRotate || 
@@ -227,7 +226,7 @@
                 var initialCenter = view.getCenter();
                 var initialZoom = view.getZoom();
 
-                // 1. PEMBUATAN TOMBOL HOME (INSTAN TOUCH RESPONSIF)
+                // 1. PEMBUATAN TOMBOL HOME (INSTAN RESPONSIF)
                 var homeButton = document.createElement('button');
                 homeButton.innerHTML = '<i class="fas fa-home"></i>';
                 homeButton.title = 'Kembali ke tampilan awal';
@@ -237,12 +236,10 @@
                         e.preventDefault();
                         e.stopPropagation();
                     }
-                    // Tanpa durasi animasi agar responsnya lompat seketika
                     view.setCenter(initialCenter);
                     view.setZoom(initialZoom);
                 }
 
-                // Menggunakan touchstart agar bereaksi instan saat sentuhan pertama jari
                 homeButton.addEventListener('touchstart', resetViewInstantly, { passive: false });
                 homeButton.addEventListener('click', resetViewInstantly);
 
@@ -254,7 +251,7 @@
                     element: homeElement
                 }));
 
-                // 2. PEMAKSAAN TOMBOL ZOOM BAWAAN (+ / -) AGAR RESPONTIF DI HP
+                // 2. RESPONSIVITAS TOMBOL ZOOM (+ / -)
                 setTimeout(function() {
                     var zoomButtons = document.querySelectorAll('.ol-zoom button');
                     zoomButtons.forEach(function(btn) {
@@ -270,14 +267,33 @@
                     });
                 }, 400);
 
-                // 3. RESPONSIVITAS TAP FITUR / TITIK PETA DI HP
-                map.on('singleclick', function(evt) {
-                    var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
-                        return feature;
+                // 3. OPTIMASI DETEKSI SENTUHAN TITIK SEKOLAH AGAR POPUP LANGSUNG KELUAR
+                // Menambah area toleransi sentuhan jari menjadi 25 pixel
+                var touchTolerance = 25;
+
+                // Tangkap event pointerdown/touchstart langsung di viewport peta
+                var mapViewport = map.getViewport();
+                
+                function handleDirectTouch(evt) {
+                    var pixel = map.getEventPixel(evt);
+                    var feature = map.forEachFeatureAtPixel(pixel, function(f) {
+                        return f;
                     }, {
-                        hitTolerance: 25 // Jangkauan toleransi ketukan jari diperbesar
+                        hitTolerance: touchTolerance
                     });
-                });
+
+                    if (feature) {
+                        // Picu event singleclick internal OpenLayers agar qgis2web merender popup info secara instan
+                        map.dispatchEvent({
+                            type: 'singleclick',
+                            coordinate: map.getCoordinateFromPixel(pixel),
+                            pixel: pixel,
+                            originalEvent: evt
+                        });
+                    }
+                }
+
+                mapViewport.addEventListener('touchstart', handleDirectTouch, { passive: true });
             }
         </script>
     </body>
