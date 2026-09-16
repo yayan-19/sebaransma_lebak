@@ -20,8 +20,6 @@
             margin: 0;
             overflow: hidden;
             -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
         }
 
         /* Running Text Header */
@@ -67,12 +65,12 @@
             width: 0 !important;
         }
 
-        /* OPTIMASI TOMBOL HP */
+        /* Ukuran Tombol Kontrol Ramah Jari HP */
         .ol-control button {
-            width: 44px !important;
-            height: 44px !important;
-            font-size: 20px !important;
-            touch-action: none !important;
+            width: 42px !important;
+            height: 42px !important;
+            font-size: 18px !important;
+            touch-action: manipulation;
             cursor: pointer;
         }
 
@@ -91,7 +89,7 @@
         }
 
         .ol-home {
-            top: 98px !important; 
+            top: 92px !important; 
             left: .5em;
         }
 
@@ -167,7 +165,7 @@
         <script src="./resources/qgis2web.js"></script>
         
         <script>
-            // Anti Google Translate untuk Running Text
+            // 1. Anti Google Translate
             const originalText = "Peta Sebaran SMA di Kabupaten Lebak";
             function enforceOriginalText() {
                 var marqueeEl = document.querySelector('#running-text-container marquee');
@@ -177,7 +175,7 @@
             }
             setInterval(enforceOriginalText, 300);
 
-            // Menghapus elemen atribusi
+            // 2. Hapus Atribusi Permanen
             function removeAttributionElements() {
                 var attributions = document.querySelectorAll('.ol-attribution, [class*="attribution"]');
                 attributions.forEach(function(el) {
@@ -186,7 +184,7 @@
             }
             setInterval(removeAttributionElements, 100);
 
-            // Hilangkan layar loading
+            // 3. Loading Screen
             window.addEventListener('load', function() {
                 removeAttributionElements();
                 enforceOriginalText();
@@ -200,7 +198,7 @@
                 }
             });
 
-            // Konfigurasi Peta OpenLayers
+            // 4. Konfigurasi Peta & Fix Touch HP
             if (typeof map !== 'undefined') {
                 map.getControls().forEach(function(control) {
                     if (control instanceof ol.control.Attribution) {
@@ -210,7 +208,7 @@
 
                 var view = map.getView();
 
-                // Kunci rotasi ke Utaras
+                // Kunci Rotasi ke Utara
                 view.setRotation(0);
                 map.getInteractions().forEach(function(interaction) {
                     if (interaction instanceof ol.interaction.DragRotate || 
@@ -219,29 +217,26 @@
                     }
                 });
 
-                // Bebaskan batasan zoom
+                // Bebaskan Zoom
                 view.setMinZoom(0);
                 view.setMaxZoom(28);
 
                 var initialCenter = view.getCenter();
                 var initialZoom = view.getZoom();
 
-                // 1. PEMBUATAN TOMBOL HOME (INSTAN RESPONSIF)
+                // Tombol Home
                 var homeButton = document.createElement('button');
                 homeButton.innerHTML = '<i class="fas fa-home"></i>';
                 homeButton.title = 'Kembali ke tampilan awal';
                 
-                function resetViewInstantly(e) {
-                    if (e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
+                function resetView(e) {
+                    if (e) e.preventDefault();
                     view.setCenter(initialCenter);
                     view.setZoom(initialZoom);
                 }
 
-                homeButton.addEventListener('touchstart', resetViewInstantly, { passive: false });
-                homeButton.addEventListener('click', resetViewInstantly);
+                homeButton.addEventListener('pointerdown', resetView);
+                homeButton.addEventListener('click', resetView);
 
                 var homeElement = document.createElement('div');
                 homeElement.className = 'ol-home ol-unselectable ol-control';
@@ -251,49 +246,20 @@
                     element: homeElement
                 }));
 
-                // 2. RESPONSIVITAS TOMBOL ZOOM (+ / -)
-                setTimeout(function() {
-                    var zoomButtons = document.querySelectorAll('.ol-zoom button');
-                    zoomButtons.forEach(function(btn) {
-                        btn.addEventListener('touchstart', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (btn.classList.contains('ol-zoom-in')) {
-                                view.setZoom(view.getZoom() + 1);
-                            } else if (btn.classList.contains('ol-zoom-out')) {
-                                view.setZoom(view.getZoom() - 1);
-                            }
-                        }, { passive: false });
-                    });
-                }, 400);
-
-                // 3. OPTIMASI DETEKSI SENTUHAN TITIK SEKOLAH AGAR POPUP LANGSUNG KELUAR
-                // Menambah area toleransi sentuhan jari menjadi 25 pixel
-                var touchTolerance = 25;
-
-                // Tangkap event pointerdown/touchstart langsung di viewport peta
-                var mapViewport = map.getViewport();
-                
-                function handleDirectTouch(evt) {
-                    var pixel = map.getEventPixel(evt);
-                    var feature = map.forEachFeatureAtPixel(pixel, function(f) {
-                        return f;
-                    }, {
-                        hitTolerance: touchTolerance
-                    });
-
-                    if (feature) {
-                        // Picu event singleclick internal OpenLayers agar qgis2web merender popup info secara instan
-                        map.dispatchEvent({
-                            type: 'singleclick',
-                            coordinate: map.getCoordinateFromPixel(pixel),
-                            pixel: pixel,
-                            originalEvent: evt
-                        });
+                // SOLUSI UTAMA: Mengatur hitTolerance global pada interaksi Select / Click bawaan OpenLayers
+                map.getInteractions().forEach(function(interaction) {
+                    if (interaction instanceof ol.interaction.Select) {
+                        interaction.setHitTolerance(20); // Toleransi 20px agar gampang diketuk jari
                     }
-                }
+                });
 
-                mapViewport.addEventListener('touchstart', handleDirectTouch, { passive: true });
+                // Memastikan event singleclick dari qgis2web bawaan dipanggil dengan hitTolerance besar
+                var originalForEachFeatureAtPixel = map.forEachFeatureAtPixel;
+                map.forEachFeatureAtPixel = function(pixel, callback, options) {
+                    options = options || {};
+                    options.hitTolerance = 20; // Otomatis perbesar semua deteksi klik ke 20px
+                    return originalForEachFeatureAtPixel.call(this, pixel, callback, options);
+                };
             }
         </script>
     </body>
