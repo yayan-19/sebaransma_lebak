@@ -54,7 +54,7 @@
             height: calc(100% - 36px);
         }
 
-        /* Hapus Atribusi */
+        /* Hapus Atribusi Permanen */
         .ol-attribution,
         .ol-attribution *,
         [class*="attribution"],
@@ -67,9 +67,9 @@
             width: 0 !important;
         }
 
-        /* OPTIMASI TOMBOL HP EKSTREM */
+        /* OPTIMASI RESPONSIF HP: Ukuran Tombol Kontrol (Zoom & Home) */
         .ol-control button {
-            width: 44px !important;  /* Ukuran standar jari HP */
+            width: 44px !important;  /* Ukuran ideal area sentuh jari HP */
             height: 44px !important;
             font-size: 20px !important;
             touch-action: none !important; /* Matikan semua gesture bawaan browser pada tombol */
@@ -90,8 +90,9 @@
             padding: 2px !important;
         }
 
+        /* Posisi Tombol Home disesuaikan dengan tombol zoom 44px */
         .ol-home {
-            top: 98px !important; /* Disesuaikan dengan ukuran tombol 44px */
+            top: 98px !important; 
             left: .5em;
         }
 
@@ -129,17 +130,20 @@
         <title>Peta Sebaran SMA di Kabupaten Lebak</title>
     </head>
     <body>
+        <!-- Header Running Text (Anti Google Translate) -->
         <div id="running-text-container" class="notranslate" translate="no">
             <marquee behavior="scroll" direction="left" scrollamount="6" class="notranslate" translate="no">
                 <span class="notranslate" translate="no">Peta Sebaran SMA di Kabupaten Lebak</span>
             </marquee>
         </div>
 
+        <!-- Tampilan Loading -->
         <div id="loading-screen">
             <div class="spinner"></div>
             <div>Memuat Peta Sebaran SMA...</div>
         </div>
 
+        <!-- Container Peta -->
         <div id="map">
             <div id="popup" class="ol-popup">
                 <a href="#" id="popup-closer" class="ol-popup-closer"></a>
@@ -164,7 +168,7 @@
         <script src="./resources/qgis2web.js"></script>
         
         <script>
-            // Anti Google Translate
+            // Anti Google Translate untuk Running Text
             const originalText = "Peta Sebaran SMA di Kabupaten Lebak";
             function enforceOriginalText() {
                 var marqueeEl = document.querySelector('#running-text-container marquee');
@@ -174,7 +178,7 @@
             }
             setInterval(enforceOriginalText, 300);
 
-            // Hapus atribusi
+            // Menghapus elemen atribusi secara periodik
             function removeAttributionElements() {
                 var attributions = document.querySelectorAll('.ol-attribution, [class*="attribution"]');
                 attributions.forEach(function(el) {
@@ -183,6 +187,7 @@
             }
             setInterval(removeAttributionElements, 100);
 
+            // Menghilangkan layar loading
             window.addEventListener('load', function() {
                 removeAttributionElements();
                 enforceOriginalText();
@@ -196,6 +201,7 @@
                 }
             });
 
+            // Konfigurasi Peta OpenLayers
             if (typeof map !== 'undefined') {
                 map.getControls().forEach(function(control) {
                     if (control instanceof ol.control.Attribution) {
@@ -205,6 +211,7 @@
 
                 var view = map.getView();
 
+                // Kunci rotasi ke Atas/Utara
                 view.setRotation(0);
                 map.getInteractions().forEach(function(interaction) {
                     if (interaction instanceof ol.interaction.DragRotate || 
@@ -213,13 +220,14 @@
                     }
                 });
 
+                // Bebaskan batasan zoom
                 view.setMinZoom(0);
                 view.setMaxZoom(28);
 
                 var initialCenter = view.getCenter();
                 var initialZoom = view.getZoom();
 
-                // EKSEKUSI INSTAN TANPA ANIMASI DELAY
+                // 1. PEMBUATAN TOMBOL HOME (INSTAN TOUCH RESPONSIF)
                 var homeButton = document.createElement('button');
                 homeButton.innerHTML = '<i class="fas fa-home"></i>';
                 homeButton.title = 'Kembali ke tampilan awal';
@@ -229,12 +237,12 @@
                         e.preventDefault();
                         e.stopPropagation();
                     }
-                    // Tanpa animasi (langsung lompat) agar terasa instan
+                    // Tanpa durasi animasi agar responsnya lompat seketika
                     view.setCenter(initialCenter);
                     view.setZoom(initialZoom);
                 }
 
-                // Listener langsung pada saat jari menyentuh layar HP
+                // Menggunakan touchstart agar bereaksi instan saat sentuhan pertama jari
                 homeButton.addEventListener('touchstart', resetViewInstantly, { passive: false });
                 homeButton.addEventListener('click', resetViewInstantly);
 
@@ -246,12 +254,28 @@
                     element: homeElement
                 }));
 
-                // Responsivitas tap titik lokasi di HP
+                // 2. PEMAKSAAN TOMBOL ZOOM BAWAAN (+ / -) AGAR RESPONTIF DI HP
+                setTimeout(function() {
+                    var zoomButtons = document.querySelectorAll('.ol-zoom button');
+                    zoomButtons.forEach(function(btn) {
+                        btn.addEventListener('touchstart', function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (btn.classList.contains('ol-zoom-in')) {
+                                view.setZoom(view.getZoom() + 1);
+                            } else if (btn.classList.contains('ol-zoom-out')) {
+                                view.setZoom(view.getZoom() - 1);
+                            }
+                        }, { passive: false });
+                    });
+                }, 400);
+
+                // 3. RESPONSIVITAS TAP FITUR / TITIK PETA DI HP
                 map.on('singleclick', function(evt) {
                     var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
                         return feature;
                     }, {
-                        hitTolerance: 20 // Diperbesar ke 20px agar gampang ditekan di HP
+                        hitTolerance: 20 // Jangkauan toleransi ketukan jari diperbesar
                     });
                 });
             }
