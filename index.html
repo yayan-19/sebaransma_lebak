@@ -19,10 +19,12 @@
             padding: 0;
             margin: 0;
             overflow: hidden;
-            -webkit-tap-highlight-color: transparent; /* Hilangkan efek higlight biru saat tombol di-tap di HP */
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
-        /* 1. Header Running Text */
+        /* Running Text Header */
         #running-text-container {
             position: fixed;
             top: 0;
@@ -52,7 +54,7 @@
             height: calc(100% - 36px);
         }
 
-        /* 2. Sembunyikan Atribusi (qgis2web, OpenLayers, QGIS) */
+        /* Hapus Atribusi */
         .ol-attribution,
         .ol-attribution *,
         [class*="attribution"],
@@ -65,18 +67,13 @@
             width: 0 !important;
         }
 
-        .ol-control > * {
-            background-color: #f8f8f8!important;
-            color: #444444!important;
-            border-radius: 0px;
-        }
-
-        /* PERBAIKAN HP: Memperbesar area sentuh tombol kontrol agar responsif */
+        /* OPTIMASI TOMBOL HP EKSTREM */
         .ol-control button {
-            width: 38px !important;
-            height: 38px !important;
-            font-size: 18px !important;
-            touch-action: manipulation; /* Mencegah delay 300ms di browser HP */
+            width: 44px !important;  /* Ukuran standar jari HP */
+            height: 44px !important;
+            font-size: 20px !important;
+            touch-action: none !important; /* Matikan semua gesture bawaan browser pada tombol */
+            cursor: pointer;
         }
 
         .gcd-gl-input::placeholder, .search-layer-input-search::placeholder {
@@ -93,17 +90,12 @@
             padding: 2px !important;
         }
 
-        /* Posisi Tombol Home disesuaikan dengan ukuran tombol baru */
         .ol-home {
-            top: 88px !important;
+            top: 98px !important; /* Disesuaikan dengan ukuran tombol 44px */
             left: .5em;
         }
-        .ol-home button {
-            font-weight: bold;
-            cursor: pointer;
-        }
 
-        /* Indicator Loading Overlay */
+        /* Indicator Loading */
         #loading-screen {
             position: absolute;
             top: 0;
@@ -137,20 +129,17 @@
         <title>Peta Sebaran SMA di Kabupaten Lebak</title>
     </head>
     <body>
-        <!-- Header Running Text (Anti Google Translate) -->
         <div id="running-text-container" class="notranslate" translate="no">
             <marquee behavior="scroll" direction="left" scrollamount="6" class="notranslate" translate="no">
                 <span class="notranslate" translate="no">Peta Sebaran SMA di Kabupaten Lebak</span>
             </marquee>
         </div>
 
-        <!-- Tampilan Loading -->
         <div id="loading-screen">
             <div class="spinner"></div>
             <div>Memuat Peta Sebaran SMA...</div>
         </div>
 
-        <!-- Container Peta -->
         <div id="map">
             <div id="popup" class="ol-popup">
                 <a href="#" id="popup-closer" class="ol-popup-closer"></a>
@@ -175,7 +164,7 @@
         <script src="./resources/qgis2web.js"></script>
         
         <script>
-            // Mencegah perubahan teks oleh Google Translate secara otomatis
+            // Anti Google Translate
             const originalText = "Peta Sebaran SMA di Kabupaten Lebak";
             function enforceOriginalText() {
                 var marqueeEl = document.querySelector('#running-text-container marquee');
@@ -185,7 +174,7 @@
             }
             setInterval(enforceOriginalText, 300);
 
-            // Menghapus teks atribusi permanen
+            // Hapus atribusi
             function removeAttributionElements() {
                 var attributions = document.querySelectorAll('.ol-attribution, [class*="attribution"]');
                 attributions.forEach(function(el) {
@@ -194,21 +183,19 @@
             }
             setInterval(removeAttributionElements, 100);
 
-            // Hilangkan layar loading saat selesai muat
             window.addEventListener('load', function() {
                 removeAttributionElements();
                 enforceOriginalText();
                 var loader = document.getElementById('loading-screen');
                 if (loader) {
                     loader.style.opacity = '0';
-                    loader.style.transition = 'opacity 0.5s ease';
+                    loader.style.transition = 'opacity 0.3s ease';
                     setTimeout(function() {
                         loader.style.display = 'none';
-                    }, 500);
+                    }, 300);
                 }
             });
 
-            // Konfigurasi OpenLayers
             if (typeof map !== 'undefined') {
                 map.getControls().forEach(function(control) {
                     if (control instanceof ol.control.Attribution) {
@@ -218,7 +205,6 @@
 
                 var view = map.getView();
 
-                // Kunci rotasi ke Atas/Utara
                 view.setRotation(0);
                 map.getInteractions().forEach(function(interaction) {
                     if (interaction instanceof ol.interaction.DragRotate || 
@@ -227,30 +213,30 @@
                     }
                 });
 
-                // Bebaskan batasan zoom
                 view.setMinZoom(0);
                 view.setMaxZoom(28);
 
                 var initialCenter = view.getCenter();
                 var initialZoom = view.getZoom();
 
-                // PERBAIKAN HP: Tombol Home dengan Event Sentuhan Langsung
+                // EKSEKUSI INSTAN TANPA ANIMASI DELAY
                 var homeButton = document.createElement('button');
                 homeButton.innerHTML = '<i class="fas fa-home"></i>';
                 homeButton.title = 'Kembali ke tampilan awal';
                 
-                function handleResetView(e) {
-                    if (e) e.preventDefault();
-                    view.animate({
-                        center: initialCenter,
-                        zoom: initialZoom,
-                        duration: 350
-                    });
+                function resetViewInstantly(e) {
+                    if (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    // Tanpa animasi (langsung lompat) agar terasa instan
+                    view.setCenter(initialCenter);
+                    view.setZoom(initialZoom);
                 }
 
-                // Menggunakan pointerdown untuk eksekusi instan di HP
-                homeButton.addEventListener('pointerdown', handleResetView, { passive: false });
-                homeButton.addEventListener('click', handleResetView);
+                // Listener langsung pada saat jari menyentuh layar HP
+                homeButton.addEventListener('touchstart', resetViewInstantly, { passive: false });
+                homeButton.addEventListener('click', resetViewInstantly);
 
                 var homeElement = document.createElement('div');
                 homeElement.className = 'ol-home ol-unselectable ol-control';
@@ -260,12 +246,12 @@
                     element: homeElement
                 }));
 
-                // PERBAIKAN HP: Meningkatkan area klik fitur/titik pada peta
+                // Responsivitas tap titik lokasi di HP
                 map.on('singleclick', function(evt) {
                     var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
                         return feature;
                     }, {
-                        hitTolerance: 15 // Diperbesar dari 12px ke 15px agar jauh lebih gampang di-tap jari
+                        hitTolerance: 20 // Diperbesar ke 20px agar gampang ditekan di HP
                     });
                 });
             }
